@@ -12,6 +12,7 @@ def load_results(path):
             (df.true_label == 1) & (df.orig_pred == 0),
         ],
         ["TP", "TN", "FP", "FN"],
+        default="unknown",
     )
     return df
 

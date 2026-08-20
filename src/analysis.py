@@ -18,7 +18,7 @@ def load_results(path):
 
 
 def deletion_curves(df, group_cols=("cam_method", "percent", "strategy")):
-    """Mean accuracy and confidence at each group, e.g. (cam_method, percent, strategy)."""
+    """Mean accuracy and confidence for each group in group_cols."""
     return (
         df.groupby(list(group_cols))
         .agg(mean_accuracy=("masked_correct", "mean"),
@@ -29,12 +29,9 @@ def deletion_curves(df, group_cols=("cam_method", "percent", "strategy")):
 
 
 def faithfulness_gap(curves):
-    """Pivot targeted vs random masking and compute the gap (random - targeted).
-
-    A positive gap means targeted masking hurt the model more than random
-    masking, i.e. the explanation is faithful. A gap near zero means the
-    heatmap isn't pointing at pixels the model actually relies on.
-    """
+    """Gap = random accuracy minus targeted accuracy. Positive means targeted
+    masking hurt the model more, so the explanation is faithful. Near zero
+    means the heatmap isn't pointing at pixels the model actually uses."""
     pivot = curves.pivot_table(
         index=["cam_method", "percent"], columns="strategy",
         values=["mean_accuracy", "mean_confidence"],
@@ -47,7 +44,7 @@ def faithfulness_gap(curves):
 
 
 def deletion_curves_by_prediction_group(df):
-    """Deletion curves split by TP / TN / FP (FN excluded — none exist in this dataset)."""
+    """Deletion curves split by TP, TN and FP. No FN group since our model had none."""
     return deletion_curves(df, group_cols=("group", "cam_method", "percent", "strategy"))
 
 

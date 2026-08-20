@@ -7,18 +7,18 @@ from gradcam_utils import compute_saliency
 
 PERCENTAGES = [5, 10, 20, 30, 50]
 CAM_METHODS = ["gradcam", "gradcam++", "hirescam"]
-MASK_VALUE = 0.0  # normalized-space 0 == ImageNet per-channel mean in raw pixel space
+MASK_VALUE = 0.0  # 0 after normalization is the same as the ImageNet mean pixel
 
 
 def get_targeted_mask(saliency_map, percent):
-    """Boolean (H, W) mask marking the top `percent`% most salient pixels."""
+    """(H, W) boolean mask, True for the top `percent`% most salient pixels."""
     threshold = np.percentile(saliency_map, 100 - percent)
     return saliency_map >= threshold
 
 
 def get_random_mask(n_true, shape, rng):
-    """Boolean (H, W) mask with the same number of True pixels as a targeted mask,
-    chosen uniformly at random — the control condition."""
+    """Same number of True pixels as get_targeted_mask, but picked at random.
+    This is the control condition."""
     mask = np.zeros(shape, dtype=bool)
     flat_indices = rng.choice(mask.size, size=n_true, replace=False)
     mask.flat[flat_indices] = True
@@ -26,7 +26,7 @@ def get_random_mask(n_true, shape, rng):
 
 
 def apply_mask(image_tensor, spatial_mask, mask_value=MASK_VALUE):
-    """image_tensor: (1, C, H, W). spatial_mask: (H, W) boolean, True = masked out."""
+    """image_tensor is (1, C, H, W). spatial_mask is (H, W), True = masked out."""
     mask = torch.from_numpy(spatial_mask).to(image_tensor.device)
     masked = image_tensor.clone()
     masked[:, :, mask] = mask_value
@@ -35,7 +35,7 @@ def apply_mask(image_tensor, spatial_mask, mask_value=MASK_VALUE):
 
 @torch.no_grad()
 def predict(model, image_tensor, target_class):
-    """Returns (predicted_class, confidence_in_target_class) for one image."""
+    """Returns (predicted_class, confidence in target_class) for one image."""
     logits = model(image_tensor)
     probs = F.softmax(logits, dim=1)
     pred_class = probs.argmax(1).item()
@@ -45,10 +45,8 @@ def predict(model, image_tensor, target_class):
 
 def run_deletion_curve(model, image_tensor, true_label, cam_method, device, rng,
                         percentages=PERCENTAGES):
-    """Runs the targeted-vs-random masking protocol for one image and one CAM method.
-
-    Returns a list of result rows (one per percentage x strategy).
-    """
+    """Runs targeted vs random masking on one image, for one CAM method.
+    Returns one result row per (percentage, strategy) pair."""
     image_tensor = image_tensor.to(device)
 
     with torch.no_grad():
@@ -85,10 +83,8 @@ def run_deletion_curve(model, image_tensor, true_label, cam_method, device, rng,
 
 def run_full_evaluation(model, test_loader, device, seed=0, cam_methods=CAM_METHODS,
                          percentages=PERCENTAGES):
-    """Runs the deletion protocol over every image in test_loader, for every CAM method.
-
-    Returns a pandas DataFrame with one row per (image, cam_method, percent, strategy).
-    """
+    """Runs the deletion protocol over the whole test set, for every CAM method.
+    Returns a DataFrame with one row per (image, cam_method, percent, strategy)."""
     model.eval()
     rng = np.random.default_rng(seed)
 

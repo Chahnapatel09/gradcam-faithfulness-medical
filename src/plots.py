@@ -10,7 +10,7 @@ IMAGENET_STD = np.array([0.229, 0.224, 0.225])
 
 
 def unnormalize(image_tensor):
-    """(1, C, H, W) normalized tensor -> (H, W, C) numpy array in [0, 1]."""
+    """Undoes ImageNet normalization so the image can be shown with imshow."""
     img = image_tensor[0].detach().cpu().permute(1, 2, 0).numpy()
     return np.clip(img * IMAGENET_STD + IMAGENET_MEAN, 0, 1)
 
